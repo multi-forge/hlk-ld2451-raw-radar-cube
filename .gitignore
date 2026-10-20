@@ -1,0 +1,39 @@
+# binarios de firmware da Hi-Link (nao redistribuir)
+*.ufw
+firmware_app.bin
+firmware_app_orig.bin
+zip_s3k8y2/
+HLK-LD2451*
+
+# artefactos da analise
+app_objdump.txt
+app_objdump.txt.gz
+*.elf
+firmware_app_elf.bin
+firmware_app_ld.elf
+patched_ld.elf
+
+# excepcoes (a negacao tem de vir depois do padrao)
+!firmware/patch.elf
+!firmware/patched_firmware.bin
+
+# capturas
+cube_*.bin
+*.sr
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# arduino
+build/
+*.bootloader.bin
+*.partitions.bin
+*.ino.bin
+
+# editors / SO
+.DS_Store
+*.swp
+.vscode/
+.idea/
