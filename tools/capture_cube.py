@@ -41,7 +41,10 @@ def main() -> int:
         print("ERRO: instale pyserial (pip install pyserial)", file=sys.stderr)
         return 1
 
-    ser = serial.Serial(args.port, args.baud, timeout=0.2)
+    try:
+        ser = serial.Serial(args.port, args.baud, timeout=0.2)
+    except PermissionError:
+        ser = serial.Serial(args.port, args.baud, timeout=0.2, dsrdtr=True, rtscts=True)
     buf = bytearray()
     last_s = 0.0
     t0 = time.time()
