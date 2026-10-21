@@ -72,7 +72,8 @@ detecção de alvos → frame UART "F4 F3 F2 F1 … F8 F7 F6 F5"
 │   └── README.md                      fiação, limites, alternativas
 ├── tools/
 │   ├── capture_cube.py                PC: framing, validação, gravação do cubo
-│   └── plot_rd.py                     PC: FFT range-Doppler + Range Profile + CSV
+│   ├── plot_rd.py                     PC: FFT range-Doppler + Range Profile + CSV
+│   └── smoke_test.py                  Teste de fumo ponta a ponta (captura + DSP + patch)
 ├── firmware/
 │   ├── stub3.c                        stub pi32v2 do dump (C, para o toolchain JieLi)
 │   ├── hooks.s                        hooks asm que redirecionam as chamadas
@@ -328,6 +329,9 @@ ld -m elf32pi32v2 -T fw_link.ld -b binary firmware_app.bin -o firmware_app_ld.el
 # 3. capturar e processar
 python3 tools/capture_cube.py /dev/ttyACM0      # grava cube_000000_samples.bin
 python3 tools/plot_rd.py cube_000000_samples.bin --csv rd.csv --profile-csv prof.csv
+
+# 4. teste de fumo ponta a ponta (validação automática de captura, DSP e patch)
+python3 tools/smoke_test.py
 ```
 
 ⚠️ Na sessão anterior, VAs antigos precisavam de **+0x120** (o blob foi re-extraído com

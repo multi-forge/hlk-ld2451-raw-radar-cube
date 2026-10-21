@@ -33,6 +33,7 @@ def main() -> int:
     ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--out", default=".")
     ap.add_argument("--seconds", type=float, default=0.0, help="0 = infinito")
+    ap.add_argument("--count", type=int, default=0, help="0 = infinito, N = para apos N cubos")
     args = ap.parse_args()
 
     try:
@@ -41,10 +42,13 @@ def main() -> int:
         print("ERRO: instale pyserial (pip install pyserial)", file=sys.stderr)
         return 1
 
-    try:
-        ser = serial.Serial(args.port, args.baud, timeout=0.2)
-    except PermissionError:
-        ser = serial.Serial(args.port, args.baud, timeout=0.2, dsrdtr=True, rtscts=True)
+    if "://" in args.port:
+        ser = serial.serial_for_url(args.port, baudrate=args.baud, timeout=0.2)
+    else:
+        try:
+            ser = serial.Serial(args.port, args.baud, timeout=0.2)
+        except PermissionError:
+            ser = serial.Serial(args.port, args.baud, timeout=0.2, dsrdtr=True, rtscts=True)
     buf = bytearray()
     last_s = 0.0
     t0 = time.time()
@@ -52,6 +56,10 @@ def main() -> int:
 
     print(f"aguardando cubos em {args.port} @ {args.baud}")
     while True:
+        if args.seconds and time.time() - t0 > args.seconds:
+            break
+        if args.count and n >= args.count:
+            break
         now = time.time()
         if now - last_s > 1.0:
             try:
@@ -109,6 +117,8 @@ def main() -> int:
             for c in range(CHIRPS):
                 off = c * FRAME_LEN + 1
                 f.write(raw[off : off + 256])
+        if args.count and n >= args.count:
+            break
 
     print(f"capturados {n} cubos")
     return 0
