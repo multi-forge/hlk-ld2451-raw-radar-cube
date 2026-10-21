@@ -16,10 +16,10 @@ Uso:
     python3 capture_cube.py COM7          (Windows)
 """
 import argparse
+import os
 import struct
 import sys
 import time
-
 MAGIC = b"\xAA\xBB\xCC\xDD"
 FRAME_LEN = 257
 CHIRPS = 64
@@ -35,6 +35,7 @@ def main() -> int:
     ap.add_argument("--seconds", type=float, default=0.0, help="0 = infinito")
     ap.add_argument("--count", type=int, default=0, help="0 = infinito, N = para apos N cubos")
     args = ap.parse_args()
+    os.makedirs(args.out, exist_ok=True)
 
     try:
         import serial
