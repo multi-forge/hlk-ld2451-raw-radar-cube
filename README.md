@@ -69,6 +69,8 @@ detecção de alvos → frame UART "F4 F3 F2 F1 … F8 F7 F6 F5"
 │   └── 08-correcoes-ao-briefing.md    as 10 correções à instrução original
 ├── sniffer/
 │   ├── esp32s3_spi_sniffer/           sketch Arduino (ESP32-S3) — compila verificado
+│   ├── rp2040_spi_sniffer/            implementação PIO+DMA para Pico (até 25 MHz)
+│   ├── rp2040_pio_sniffer/            variante PIO
 │   └── README.md                      fiação, limites, alternativas
 ├── tools/
 │   ├── capture_cube.py                PC: framing, validação, gravação do cubo
@@ -79,6 +81,7 @@ detecção de alvos → frame UART "F4 F3 F2 F1 … F8 F7 F6 F5"
 │   ├── hooks.s                        hooks asm que redirecionam as chamadas
 │   ├── link_stub.ld                   linker script (posiciona hook e stub)
 │   ├── apply_patch2.py                aplicador do patch (verifica e aplica)
+│   ├── pack_ufw.py                    empacotador .ufw (substituição de app.bin)
 │   ├── patch.elf                      stub + hooks linkados (pronto)
 │   └── patched_firmware.bin           firmware patcheado (flag=2, contínuo)
 ├── research/
