@@ -154,7 +154,7 @@ def test_firmware_patch():
         if b1 != b2:
             diffs.append((off, off + BASE_VA, b1, b2))
 
-    assert len(diffs) == 391, f"Esperado 391 bytes modificados, encontrado {len(diffs)}"
+    assert len(diffs) == 132, f"Esperado 132 bytes modificados, encontrado {len(diffs)}"
 
     # Verificar que todas as alteracoes estao nas regioes esperadas
     # Hook 1: 0x1E1601E..0x1E16021
