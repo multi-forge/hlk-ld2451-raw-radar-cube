@@ -1,0 +1,53 @@
+;
+; HLK-LD2451 SPI1 Passive Sniffer for Raspberry Pi Pico (RP2040)
+; Hardware PIO program for SPI Mode 1 (CPOL=0, CPHA=1), Single-wire, No CS.
+;
+
+.program spi1_sniffer
+; Configuration:
+; - IN pin: SPI1DI (PB2 / PP2)
+; - SCLK pin: SPI1CLK (PB0 / PP0) passed as GPIO index to wait instructions
+; - Shift direction: Left (MSB first)
+; - Autopush: Enabled, threshold = 8 bits (byte-aligned into RX FIFO)
+;
+; Timing:
+; In SPI Mode 1:
+; SCLK idle is LOW (CPOL=0).
+; Data updates on SCLK rising edge (0 -> 1).
+; Data is stable to sample on SCLK falling edge (1 -> 0).
+
+.wrap_target
+    wait 1 gpio 10       ; Aguarda a borda de subida do SCLK (dado sendo atualizado pelo master)
+    wait 0 gpio 10       ; Aguarda a borda de descida do SCLK (instante estável do dado)
+    in pins, 1           ; Amostra 1 bit de DI para o ISR
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void spi1_sniffer_program_init(PIO pio, uint sm, uint offset, uint pin_sclk, uint pin_di) {
+    pio_sm_config c = spi1_sniffer_program_get_default_config(offset);
+
+    // Configura o pino de entrada de dados (DI)
+    sm_config_set_in_pins(&c, pin_di);
+    pio_gpio_init(pio, pin_di);
+    gpio_set_dir(pin_di, GPIO_IN);
+    gpio_pull_down(pin_di);
+
+    // Configura o pino de clock (SCLK)
+    pio_gpio_init(pio, pin_sclk);
+    gpio_set_dir(pin_sclk, GPIO_IN);
+    gpio_pull_down(pin_sclk);
+
+    // Shift para a esquerda (MSB first), autopush ativado em 8 bits
+    sm_config_set_in_shift(&c, false, true, 8);
+
+    // Executa na velocidade máxima do sistema (125 MHz / 133 MHz)
+    sm_config_set_clkdiv(&c, 1.0f);
+
+    // Inicializa e ativa a state machine
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

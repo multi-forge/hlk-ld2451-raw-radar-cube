@@ -1,0 +1,56 @@
+;
+; HLK-LD2451 — Sniffer SPI1 em RP2040 (Raspberry Pi Pico) via PIO
+;
+; Barramento capturado: SPI Mode 1 (CPOL=0, CPHA=1), SLAVE sem pino CS.
+;   - SCLK ocioso em nivel BAIXO.
+;   - Master (RC2412FR) envia dados na borda de SUBIDA.
+;   - Slave (AC635N / PIO) amostra na borda de DESCIDA (falling edge).
+;   - Transmissao MSB-first.
+;
+; Pinos padrao:
+;   GPIO 2: SCLK (ligado ao PP0 do HLK-LD2451 / PB0 do AC635N)
+;   GPIO 3: DI   (ligado ao PP2 do HLK-LD2451 / PB2 do AC635N)
+;   GND   : GND
+;
+
+.program spi_slave_mode1
+
+.wrap_target
+    wait 1 gpio 2       ; Aguarda SCLK subir (transmissor posiciona bit na subida)
+    wait 0 gpio 2       ; Aguarda SCLK descer (ponto de amostragem do Modo 1)
+    in pins, 1          ; Amostra 1 bit de DI (GPIO 3) no falling edge
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void spi_slave_mode1_program_init(PIO pio, uint sm, uint offset, uint sclk_pin, uint di_pin) {
+    pio_sm_config c = spi_slave_mode1_program_get_default_config(offset);
+
+    // Configura pino de dados (DI) como entrada para 'in pins, 1'
+    sm_config_set_in_pins(&c, di_pin);
+    pio_gpio_init(pio, di_pin);
+    gpio_set_pulls(di_pin, false, true); // pulldown por seguranca
+
+    // Configura pino de clock (SCLK)
+    pio_gpio_init(pio, sclk_pin);
+    gpio_set_pulls(sclk_pin, false, true); // pulldown (SCLK idle low em Modo 1)
+
+    // Configura pin direction
+    pio_sm_set_consecutive_pindirs(pio, sm, di_pin, 1, false);
+    pio_sm_set_consecutive_pindirs(pio, sm, sclk_pin, 1, false);
+
+    // Shift left (MSB-first para SPI), autopush a cada 8 bits
+    sm_config_set_in_shift(&c, false, true, 8);
+
+    // FIFO join: usa os dois FIFOs como RX FIFO de 8 palavras (32 bytes de buffer interno de SM)
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+
+    // Divisor 1.0 -> executa a velocidade maxima do sistema (125 MHz -> ciclo de 8 ns)
+    sm_config_set_clkdiv(&c, 1.0f);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

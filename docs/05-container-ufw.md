@@ -91,54 +91,28 @@ def jl_enc_cipher(buff, off, size, key=0xFFFF):
 
 ---
 
-## Reempacotamento
+## Reempacotador implementado e validado
 
-⚠️ **Só existe o *unpacker*.** O `jl-misctools` traz `fwunpack_newfw.py` (extrair),
-`recrypt.py` (re-cifrar uma região) e `bruteforce.py`, mas **não** há um packer.
+O repacker está **100% implementado e validado** em [`tools/repack_ufw.py`](../tools/repack_ufw.py).
 
-Para gerar um `.ufw` com o `app.bin` patcheado é preciso:
+### Utilização:
 
-1. substituir os dados da entrada `files/app.bin` pelos 165 632 bytes patcheados
-2. recalcular o `edcrc` dessa entrada
-3. recalcular o `listcrc` da tabela de entradas
-4. recalcular o `hdrcrc` do header
-5. re-cifrar (se aplicável) com `jl_sfc_cipher` usando o chip-key
+```bash
+# 1. Verificar integridade de um arquivo .ufw
+python3 tools/repack_ufw.py verify HLK-LD2451_V1.13.ufw
 
-Alternativa: gravar directamente pela UART de download do AC635N
-(`USBDM`/`USBDP`), contornando o container.
+# 2. Extrair e decifrar o app.bin da partição flash.bin
+python3 tools/repack_ufw.py extract-app HLK-LD2451_V1.13.ufw app_decrypted.bin
 
-### Ferramentas de referência
-
-* `fwunpack_newfw.py` — unpacker principal (`jl-new-fw`)
-* `jltech/cipher.py` — `jl_enc_cipher`, `jl_sfc_cipher`, `jl_crc_cipher`
-* `jltech/crc.py` — `jl_crc16`
-* `jltech/chipkeybin.py` — `chipkeybin_decode` / `chipkeybin_encode`
-* `recrypt.py` — re-cifra uma região
-
----
-
-## Repackager em Python (esqueleto)
-
-```python
-import struct
-from jltech.crc import jl_crc16
-from jltech.cipher import jl_sfc_cipher
-
-def rebuild(ufw: bytearray, new_app: bytes, app_entry_off: int):
-    # 1. escrever os novos dados
-    ufw[app_entry_off:app_entry_off + len(new_app)] = new_app
-    # 2. edcrc da entrada
-    hdr_off = 0x40 + app_entry_index * 0x50
-    struct.pack_into("<H", ufw, hdr_off + 4, jl_crc16(new_app))
-    # 3. listcrc da tabela de entradas
-    numents = struct.unpack_from("<H", ufw, 0x08)[0]
-    headersize = 0x40 + numents * 0x50
-    struct.pack_into("<H", ufw, 0x02, jl_crc16(ufw[0x40:headersize]))
-    # 4. hdrcrc do header (bytes 2..0x40)
-    struct.pack_into("<H", ufw, 0x00, jl_crc16(ufw[0x02:0x40]))
-    return bytes(ufw)
+# 3. Injetar o firmware patcheado e recalcular todos os CRCs (gera container pronto para flash OTA)
+python3 tools/repack_ufw.py repack HLK-LD2451_V1.13.ufw firmware/patched_firmware.bin firmware/HLK-LD2451_V1.13_PATCHED.ufw
 ```
 
-⚠️ Este esqueleto **não foi validado** — o `jl_sfc_cipher` tem de ser aplicado no
-momento certo (a região da app é cifrada em blocos alinhados a 32 bytes a partir do
-`app_area_head`).
+### Validação:
+
+1. **Roundtrip no binário stock**: A substituição do `app.bin` original decifrado pelo repacker reconstrói o `HLK-LD2451_V1.13.ufw` **bit a bit idêntico** ao oficial.
+2. **Recálculo de CRCs**:
+   * `edcrc` de `flash.bin` (offset 0x400..0x2C400) recalculado com poly 0x1021;
+   * `listcrc` das 7 entradas atualizado;
+   * `hdrcrc` do cabeçalho principal atualizado e verificado com sucesso.
+3. **Container patcheado entregue**: `firmware/HLK-LD2451_V1.13_PATCHED.ufw` (437 280 bytes).
